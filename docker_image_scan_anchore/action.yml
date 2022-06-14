@@ -1,0 +1,16 @@
+name: "DOCKER:SCAN:ANCHORE"
+author: Linus Seino
+branding:
+  icon: cloud
+  color: gray-dark
+description: "Docker Scan: Anchore"
+inputs:
+  docker_image_name:
+    description: The name of your docker image you are scanning.
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- -p -t 900 -V "${{ inputs.docker_image_name }}"
+      shell: bash
