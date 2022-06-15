@@ -1,0 +1,47 @@
+name: "DOCKER:BUILD:CHECK:PUSH"
+author: Linus Seino
+branding:
+  icon: cloud
+  color: gray-dark
+description: "Docker Build, Check, Push"
+inputs:
+  docker_file_location:
+    description: The location of the docker file.
+    required: true
+  docker_image_name:
+    description: The name of your docker image you are building.
+    required: true
+  docker_username:
+    description: Docker Username.
+    required: true
+  docker_password:
+    description: Docker PAT.
+    required: true
+  docker_server:
+    description: Docker server to use.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        docker_image=${{ inputs.docker_image_name }}
+        docker_file=${{ inputs.docker_file_location }}
+        can_pull=""
+
+        echo "DOCKER IMAGE: ${docker_image}"
+        echo "DOCKER FILE LOCATION: ${docker_file}"
+
+        docker login ${{ inputs.docker_server }} --username ${{ inputs.docker_username }} --password ${{ inputs.docker_password }}
+        docker pull ${docker_image} || can_pull=false
+        echo "Can pull image: ${can_pull}"
+
+        if [ -z "${can_pull}" ]; then
+          echo "Check Variable Empty: Docker image with tag already exists."
+        else
+          echo "Couldn't Find the Image, Building and Pushing."
+          docker build -t ${docker_image} ${docker_file}
+          docker push ${docker_image}
+        fi
+
+      shell: bash
