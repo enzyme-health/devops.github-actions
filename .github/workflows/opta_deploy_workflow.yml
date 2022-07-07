@@ -1,7 +1,4 @@
 name: "Reusable:Deploy:Workflow"
-branding:
-  icon: cloud
-  color: gray-dark
   
 on:
   workflow_call:
