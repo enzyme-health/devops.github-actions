@@ -58,7 +58,7 @@ jobs:
           VERSION=0.33.1 /bin/bash -c "$(curl -fsSL https://docs.opta.dev/install.sh)"
       - name: Set Opta Configuration File Path
         run: |
-          echo "OPTA_CONFIG_FILE=wheel-deploys/opta/$ENVIRONMENT/$OPTA_FILE" >> $GITHUB_ENV
+          echo "OPTA_CONFIG_FILE=wheel-deploys/opta/$OPTA_FILE" >> $GITHUB_ENV
         env:
           ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
           OPTA_FILE: ${{ inputs.OPTA_FILE }}
