@@ -1,5 +1,5 @@
-name: "Reusable:Deploy:Workflow"
-  
+name: Reusable Deploy Workflow
+
 on:
   workflow_call:
     inputs:
@@ -31,7 +31,7 @@ jobs:
   opta-deploy:
     name: "Opta ${{ inputs.ENVIRONMENT }} Deploy"
     environment: ${{ inputs.ENVIRONMENT }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials for Opta Deploy
         uses: aws-actions/configure-aws-credentials@v1
@@ -55,25 +55,21 @@ jobs:
 
       - name: Install Opta tools
         run: |
-          VERSION=0.33.1 /bin/bash -c "$(curl -fsSL https://docs.opta.dev/install.sh)"
+          /bin/bash -c "$(curl -fsSL https://docs.opta.dev/install.sh)"
       - name: Set Opta Configuration File Path
         run: |
           echo "OPTA_CONFIG_FILE=wheel-deploys/opta/$OPTA_FILE" >> $GITHUB_ENV
         env:
           ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
           OPTA_FILE: ${{ inputs.OPTA_FILE }}
-
       - uses: azure/setup-kubectl@v2.0
         with:
           version: "v1.23.6"
         id: install
-
       - name: Update deployment via Opta
         id: opta-deploy
         run: |
-          kubectl version --client --short
-          aws --version
-          opta apply -c $OPTA_CONFIG_FILE --image-tag $DOCKER_IMAGE_TAG --auto-approve
+          opta apply -c $OPTA_CONFIG_FILE --var image-tag=$DOCKER_IMAGE_TAG --image-tag $DOCKER_IMAGE_TAG -e $ENVIRONMENT --auto-approve
           echo "Deployed $DOCKER_IMAGE_TAG to $ENVIRONMENT"
         env:
           OPTA_HOTFIX_EXEC_CREDENTIAL_VERSION: client.authentication.k8s.io/v1beta1
