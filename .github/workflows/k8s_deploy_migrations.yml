@@ -20,9 +20,6 @@ on:
       PAT:
         required: true
 
-env:
-  GITHUB_SHA: ${{ github.sha }}
-
 jobs:
   deploy_migrations:
     name: "${{ inputs.ENVIRONMENT }} Migrations Deploy"
