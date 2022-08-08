@@ -59,7 +59,8 @@ jobs:
         with:
           kustomize-version: "3.6.1"
 
-      - run: |
+      - name: Kustomize update the Image tag for Environment
+        run: |
           pushd wheel-deploys/k8s/${K8S_SERVICE}/overlays/${ENVIRONMENT}
           kustomize edit set image 021057518589.dkr.ecr.us-west-2.amazonaws.com/${K8S_SERVICE}-migrations:{GITHUB_SHA}
         env:
@@ -85,8 +86,6 @@ jobs:
       - name: Update deployment via Opta
         run: |
           kubectl version --client --short
-          kubectl apply -k  overlays/staging/kustomize.yaml
+          kubectl apply -k  overlays/${ENVIRONMENT}/kustomize.yaml
         env:
-          K8S_FILE_TEMPLATE: ${{ env.K8S_FILE_TEMPLATE }}
-          DOCKER_IMAGE_TAG: ${{ inputs.DOCKER_IMAGE_TAG }}
           ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
