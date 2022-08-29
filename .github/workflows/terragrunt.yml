@@ -53,6 +53,8 @@ jobs:
       - name: Terragrunt Format
         id: fmt
         run: |
+          ls
+          "ls terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
           "cd terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
           terragrunt run-all hclfmt
 
