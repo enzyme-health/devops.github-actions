@@ -62,7 +62,7 @@ jobs:
         id: init
         run: |
           cd "terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
-          terragrunt run-all  init
+          echo n | terragrunt run-all  init
 
       - name: Terragrunt Validate
         id: validate
