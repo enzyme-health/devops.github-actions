@@ -10,6 +10,8 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
+      PAT:
+        required: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -27,6 +29,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
+          repository: enzyme-health/terraform-deployments
+          token: ${{ secrets.PAT }}
           path: terraform
 
       - name: Setup Terraform
