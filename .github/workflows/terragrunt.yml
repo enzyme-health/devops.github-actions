@@ -29,7 +29,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          repository: enzyme-health/terraform-deployments@
+          repository: enzyme-health/terraform-deployments
           token: ${{ secrets.PAT }}
           path: terraform
           ref: DEVOPS-288
