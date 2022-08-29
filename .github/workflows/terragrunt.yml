@@ -53,28 +53,26 @@ jobs:
       - name: Terragrunt Format
         id: fmt
         run: |
-          ls
-          "ls terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
-          "cd terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
+          "cd ./terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
           terragrunt run-all hclfmt
 
       - name: Terragrunt Init
         id: init
         run: |
-          "cd terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
+          "cd ./terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
           terragrunt run-all  init
 
       - name: Terragrunt Validate
         id: validate
         run: |
-           "cd terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
+           "cd ./terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
            terragrunt run-all validate -no-color
 
       - name: Terragrunt Plan
         id: plan
         if: github.event_name == 'pull_request'
         run: |
-          "cd terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
+          "cd ./terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
           terragrunt run-all plan -no-color -input=false
         continue-on-error: true
 
@@ -116,5 +114,5 @@ jobs:
       - name: Terragrunt run-all Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          "cd terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
+          "cd ./terraform/deployments/aws_accounts/${{ inputs.ENVIRONMENT }}"
           terragrunt run-all apply --terragrunt-non-interactive
