@@ -1,5 +1,4 @@
----
-name: Reusable Opta Deploy Workflow
+name: Reusable Deploy Workflow
 
 on:
   workflow_call:
@@ -10,7 +9,10 @@ on:
       ENVIRONMENT:
         required: true
         type: string
-      OPTA_FILE:
+      DEPLOY_OPTA_FILE:
+        required: true
+        type: string
+      DB_MIGRATE_OPTA_FILE:
         required: true
         type: string
     secrets:
@@ -22,61 +24,67 @@ on:
         required: true
 
 concurrency:
-  group: ${{ inputs.ENVIRONMENT }}-${{ inputs.OPTA_FILE }}-deploy
+  group: "${{ inputs.ENVIRONMENT }}-${{ inputs.OPTA_FILE }}-deploy"
   cancel-in-progress: true
 
 env:
   GITHUB_SHA: ${{ github.sha }}
+  OPTA_HOTFIX_EXEC_CREDENTIAL_VERSION: 'client.authentication.k8s.io/v1beta1'
+  DB_MIGRATE_OPTA_CONFIG_FILE: 'wheel-deploys/opta/${{ inputs.ENVIRONMENT }}/${{ inputs.DB_MIGRATE_OPTA_FILE }}'
+  DEPLOY_OPTA_CONFIG_FILE : 'wheel-deploys/opta/${{ inputs.ENVIRONMENT }}/${{ inputs.DEPLOY_OPTA_FILE }}'
+  DOCKER_IMAGE_TAG: ${{ inputs.DOCKER_IMAGE_TAG }}
+  ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+
 
 jobs:
   opta-deploy:
-    name: Opta ${{ inputs.ENVIRONMENT }} Deploy
+    name: "Opta $ENVIRONMENT Deploy"
+    environment: $ENVIRONMENT
     runs-on: ubuntu-20.04
     steps:
-    - name: Configure AWS credentials for Opta Deploy
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCOUNT_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_ACCOUNT_SECRET_ACCESS_KEY }}
-        aws-region: us-west-2
+      - name: Configure AWS credentials for Opta Deploy
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCOUNT_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_ACCOUNT_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
 
-    - name: Checkout repo wheel-deploys
-      uses: actions/checkout@v2
-      with:
-        repository: enzyme-health/wheel-deploys
-        token: ${{ secrets.PAT }}
-        path: wheel-deploys
+      - name: Checkout repo wheel-deploys
+        uses: actions/checkout@v2
+        with:
+          repository: enzyme-health/wheel-deploys
+          token: ${{ secrets.PAT }}
+          path: wheel-deploys
 
-    - name: Pin terraform version
-      uses: hashicorp/setup-terraform@v1
-      with:
-        terraform_version: 1.0.0
-        terraform_wrapper: false
+      - name: Pin terraform version
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0
+          terraform_wrapper: false
 
-    - name: Install Opta tools
-      run: |
-        VERSION=0.33.1 /bin/bash -c "$(curl -fsSL https://docs.opta.dev/install.sh)"
-    - name: Set Opta Configuration File Path
-      run: |
-        echo "OPTA_CONFIG_FILE=wheel-deploys/opta/$ENVIRONMENT/$OPTA_FILE" >> $GITHUB_ENV
-      env:
-        ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
-        OPTA_FILE: ${{ inputs.OPTA_FILE }}
+      - name: Install Opta tools
+        run: |
+          VERSION=0.33.1 /bin/bash -c "$(curl -fsSL https://docs.opta.dev/install.sh)"
 
-    - uses: azure/setup-kubectl@v2.0
-      with:
-        version: v1.23.6
-      id: install
+      - uses: azure/setup-kubectl@v2.0
+        with:
+          version: 'v1.23.6'
+        id: install
 
-    - name: Update deployment via Opta
-      id: opta-deploy
-      run: |
-        kubectl version --client --short
-        aws --version
-        opta apply -c $OPTA_CONFIG_FILE --var image-tag=$DOCKER_IMAGE_TAG --image-tag $DOCKER_IMAGE_TAG --auto-approve
-        echo "Deployed $DOCKER_IMAGE_TAG to $ENVIRONMENT"
-      env:
-        OPTA_HOTFIX_EXEC_CREDENTIAL_VERSION: client.authentication.k8s.io/v1beta1
-        OPTA_CONFIG_FILE: ${{ env.OPTA_CONFIG_FILE }}
-        DOCKER_IMAGE_TAG: ${{ inputs.DOCKER_IMAGE_TAG }}
-        ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+      - name: Perform db migration via Opta
+        id: opta-deploy
+        run: |
+          kubectl version --client --short
+          aws --version
+          echo "Performing DB MIGRATION"
+          opta apply -c $DB_MIGRATE_OPTA_CONFIG_FILE --var image-tag=$DOCKER_IMAGE_TAG --image-tag $DOCKER_IMAGE_TAG --auto-approve
+          echo "Deployed $DOCKER_IMAGE_TAG to Migration $ENVIRONMENT"
+
+      - name: Update deployment via Opta
+        id: opta-deploy
+        run: |
+          kubectl version --client --short
+          aws --version
+          echo "Performing OPTA DEPLOY"
+          opta apply -c $DEPLOY_OPTA_CONFIG_FILE --var image-tag=$DOCKER_IMAGE_TAG --image-tag $DOCKER_IMAGE_TAG --auto-approve
+          echo "Deployed $DOCKER_IMAGE_TAG to $ENVIRONMENT"
