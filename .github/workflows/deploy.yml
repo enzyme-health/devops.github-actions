@@ -72,7 +72,7 @@ jobs:
         id: install
 
       - name: Perform db migration via Opta
-        id: opta-deploy
+        id: opta-migration
         run: |
           kubectl version --client --short
           aws --version
