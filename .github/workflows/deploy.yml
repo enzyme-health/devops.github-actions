@@ -38,7 +38,7 @@ env:
 
 jobs:
   opta-deploy:
-    name: "Opta $ENVIRONMENT Deploy"
+    name: "Opta ${{ inputs.ENVIRONMENT }} Deploy"
     environment: $ENVIRONMENT
     runs-on: ubuntu-20.04
     steps:
@@ -63,8 +63,7 @@ jobs:
           terraform_wrapper: false
 
       - name: Install Opta tools
-        run: |
-          VERSION=0.33.1 /bin/bash -c "$(curl -fsSL https://docs.opta.dev/install.sh)"
+        run: VERSION=0.33.1 /bin/bash -c "$(curl -fsSL https://docs.opta.dev/install.sh)"
 
       - uses: azure/setup-kubectl@v2.0
         with:
