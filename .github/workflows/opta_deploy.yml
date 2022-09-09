@@ -22,7 +22,6 @@ on:
 
 concurrency:
   group: "${{ inputs.ENVIRONMENT }}-${{ inputs.OPTA_FILE }}-deploy"
-  cancel-in-progress: true
 
 env:
   GITHUB_SHA: ${{ github.sha }}
