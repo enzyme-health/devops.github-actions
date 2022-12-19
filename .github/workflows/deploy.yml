@@ -63,7 +63,7 @@ jobs:
           terraform_wrapper: false
 
       - name: Install Opta tools
-        run: VERSION=0.36.0 /bin/bash -c "$(curl -fsSL https://docs.opta.dev/install.sh)"
+        run: VERSION=0.36.0 /bin/bash -c "$(curl -fsSL https://edge.docs.opta.dev/install.sh)"
 
       - uses: azure/setup-kubectl@v2.0
         with:
