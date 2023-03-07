@@ -63,7 +63,7 @@ jobs:
           ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
           OPTA_FILE: ${{ inputs.OPTA_FILE }}
 
-      - uses: azure/setup-kubectl@v2.0
+      - uses: azure/setup-kubectl@v3.0
         with:
           version: 'v1.23.6'
         id: install
