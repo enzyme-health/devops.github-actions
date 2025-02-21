@@ -55,7 +55,7 @@ jobs:
 
       - name: Install Opta tools
         run: |
-          VERSION=0.37.0 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/enzyme-health/opta/refs/tags/v0.37.0/install.sh)"
+          VERSION=0.40.0 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/enzyme-health/opta/refs/tags/v0.40.0/install.sh)"
       - name: Set Opta Configuration File Path
         run: |
           echo "OPTA_CONFIG_FILE=wheel-deploys/opta/$ENVIRONMENT/$OPTA_FILE" >> $GITHUB_ENV
