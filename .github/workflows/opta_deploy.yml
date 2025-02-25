@@ -56,6 +56,11 @@ jobs:
       - name: Install Opta tools
         run: |
           VERSION=0.40.0 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/enzyme-health/opta/refs/tags/v0.40.0/install.sh)"
+          echo "Checking version of opta release from ~/.opta/config/version.txt"
+          cat ~/.opta/config/version.txt
+      # Note that if getting the version works above, we can also cat the hpa file to verify the expected change for hpa exists there:
+      # ~/.opta/modules/opta-k8s-service-helm/templates/hpa.yaml
+
       - name: Set Opta Configuration File Path
         run: |
           echo "OPTA_CONFIG_FILE=wheel-deploys/opta/$ENVIRONMENT/$OPTA_FILE" >> $GITHUB_ENV
