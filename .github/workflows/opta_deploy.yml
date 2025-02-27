@@ -78,7 +78,7 @@ jobs:
         run: |
           kubectl version --client --short
           aws --version
-          opta force-unlock -c $OPTA_CONFIG_FILE --var image-tag=$DOCKER_IMAGE_TAG --image-tag $DOCKER_IMAGE_TAG --auto-approve
+          opta apply -c $OPTA_CONFIG_FILE --var image-tag=$DOCKER_IMAGE_TAG --image-tag $DOCKER_IMAGE_TAG --auto-approve
           echo "Deployed $DOCKER_IMAGE_TAG to $ENVIRONMENT"
         env:
           OPTA_HOTFIX_EXEC_CREDENTIAL_VERSION: client.authentication.k8s.io/v1beta1
