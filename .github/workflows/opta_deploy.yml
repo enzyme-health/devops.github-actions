@@ -78,6 +78,7 @@ jobs:
         run: |
           kubectl version --client --short
           aws --version
+          terraform force-unlock -force
           opta apply -c $OPTA_CONFIG_FILE --var image-tag=$DOCKER_IMAGE_TAG --image-tag $DOCKER_IMAGE_TAG --detailed-plan --auto-approve
           echo "Deployed $DOCKER_IMAGE_TAG to $ENVIRONMENT"
         env:
