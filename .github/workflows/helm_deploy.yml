@@ -1,0 +1,124 @@
+name: Reusable Helm Deployment Workflow
+
+on:
+  workflow_call:
+    inputs:
+      DOCKER_IMAGE_TAG:
+        required: true
+        type: string
+        description: 'Docker image tag to deploy'
+      ENVIRONMENT:
+        required: true
+        type: string
+        description: 'Target environment (production, staging, sandbox)'
+      EKS_CLUSTER_NAME:
+        required: true
+        type: string
+        description: 'Name of the EKS cluster to deploy to'
+      SERVICE:
+        required: true
+        type: string
+        description: 'Service to deploy (on-demand-api, on-demand-api-sidekiq, etc.)'
+      CHART_PATH:
+        required: true
+        type: string
+        description: 'Path to the Helm chart'
+      VALUES_PATH:
+        required: true
+        type: string
+        description: 'Path to the values file'
+      NAMESPACE:
+        required: true
+        type: string
+        description: 'Kubernetes namespace to deploy to'
+      TIMEOUT:
+        required: false
+        type: string
+        default: '300'
+        description: 'Timeout for the deployment in seconds'
+      WAIT:
+        required: false
+        type: boolean
+        default: true
+        description: 'Whether to wait for the deployment to complete'
+      ROLLBACK:
+        required: false
+        type: boolean
+        default: true
+        description: 'Whether to rollback to the previous version if the deployment fails'
+    secrets:
+      AWS_ACCOUNT_ACCESS_KEY_ID:
+        required: true
+      AWS_ACCOUNT_SECRET_ACCESS_KEY:
+        required: true
+      PAT:
+        required: true
+
+concurrency:
+  group: "${{ inputs.ENVIRONMENT }}-${{ inputs.SERVICE }}-deploy"
+  cancel-in-progress: true
+
+env:
+  GITHUB_SHA: ${{ github.sha }}
+
+jobs:
+  helm-deploy:
+    name: "Helm ${{ inputs.ENVIRONMENT }} Deploy"
+    environment: ${{ inputs.ENVIRONMENT }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCOUNT_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_ACCOUNT_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Checkout repo wheel-deploys
+        uses: actions/checkout@v2
+        with:
+          repository: enzyme-health/wheel-deploys
+          token: ${{ secrets.PAT }}
+          path: wheel-deploys
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v2.0
+        with:
+          version: 'v1.25.16'
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.12.0'
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Configure kubectl context
+        run: |
+          aws eks update-kubeconfig --name ${{ inputs.EKS_CLUSTER_NAME }} --region us-west-2
+
+      - name: Deploy with Helm
+        id: deploy
+        run: |
+          # Get current revision before deployment
+          CURRENT_REVISION=$(helm history ${{ inputs.SERVICE }} --namespace ${{ inputs.NAMESPACE }} -o json | jq -r '.[-1].revision // 0')
+          
+          echo "current_revision=$CURRENT_REVISION" >> $GITHUB_OUTPUT
+          
+          # Deploy the application using Helm
+          helm upgrade --install ${{ inputs.SERVICE }} ${{ inputs.CHART_PATH }} \
+            --values ${{ inputs.VALUES_PATH }} \
+            --namespace ${{ inputs.NAMESPACE }} \
+            --timeout ${{ inputs.TIMEOUT }}s \
+            ${{ inputs.WAIT == 'true' && '--wait' || '' }} \
+            --atomic \
+            --set image.tag=${{ inputs.DOCKER_IMAGE_TAG }}
+          
+          echo "Deployed ${{ inputs.DOCKER_IMAGE_TAG }} to ${{ inputs.ENVIRONMENT }}"
+
+      - name: Rollback on failure
+        if: failure() && ${{ inputs.ROLLBACK == 'true' }}
+          echo "Deployment failed, rolling back to previous revision"
+          helm rollback ${{ inputs.SERVICE }} ${{ steps.deploy.outputs.current_revision }} --namespace ${{ inputs.NAMESPACE }}
+          exit 1
