@@ -110,6 +110,8 @@ jobs:
 
           aws iam get-role --role-name staging2-on-demand-api-api | cat
 
+          aws iam list-attached-role-policies --role-name staging2-on-demand-api-api | cat
+
           # # Deploy the application using Helm
           # helm upgrade --install ${{ inputs.SERVICE }} ${{ inputs.CHART_PATH }} \
           #   --values ${{ inputs.VALUES_PATH }} \
