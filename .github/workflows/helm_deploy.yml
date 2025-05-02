@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       DOCKER_IMAGE_TAG:
-        required: true
+        required: false
         type: string
         description: 'Docker image tag to deploy'
       ENVIRONMENT:
@@ -113,7 +113,7 @@ jobs:
             --timeout ${{ inputs.TIMEOUT }}s \
             ${{ inputs.WAIT == 'true' && '--wait' || '' }} \
             --atomic \
-            --set image.tag=${{ inputs.DOCKER_IMAGE_TAG }}
+            ${{ inputs.DOCKER_IMAGE_TAG != '' && format('--set image.tag={0}', inputs.DOCKER_IMAGE_TAG) || '' }}
           
           echo "Deployed ${{ inputs.DOCKER_IMAGE_TAG }} to ${{ inputs.ENVIRONMENT }}"
 
