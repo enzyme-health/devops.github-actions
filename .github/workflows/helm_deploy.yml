@@ -108,15 +108,17 @@ jobs:
           echo "current_revision=$CURRENT_REVISION" >> $GITHUB_OUTPUT
           ls -la wheel-deploys
 
-          # Deploy the application using Helm
-          helm upgrade --install ${{ inputs.SERVICE }} ${{ inputs.CHART_PATH }} \
-            --values ${{ inputs.VALUES_PATH }} \
-            --namespace ${{ inputs.NAMESPACE }} \
-            --timeout ${{ inputs.TIMEOUT }}s \
-            ${{ inputs.WAIT == 'true' && '--wait' || '' }} \
-            --atomic \
-            --create-namespace \
-            ${{ inputs.DOCKER_IMAGE_TAG != '' && format('--set image.tag={0}', inputs.DOCKER_IMAGE_TAG) || '' }}
+          aws iam get-role --role-name staging2-on-demand-api-api | cat
+
+          # # Deploy the application using Helm
+          # helm upgrade --install ${{ inputs.SERVICE }} ${{ inputs.CHART_PATH }} \
+          #   --values ${{ inputs.VALUES_PATH }} \
+          #   --namespace ${{ inputs.NAMESPACE }} \
+          #   --timeout ${{ inputs.TIMEOUT }}s \
+          #   ${{ inputs.WAIT == 'true' && '--wait' || '' }} \
+          #   --atomic \
+          #   --create-namespace \
+          #   ${{ inputs.DOCKER_IMAGE_TAG != '' && format('--set image.tag={0}', inputs.DOCKER_IMAGE_TAG) || '' }}
 
           echo "Deployed ${{ inputs.DOCKER_IMAGE_TAG }} to ${{ inputs.ENVIRONMENT }}"
 
