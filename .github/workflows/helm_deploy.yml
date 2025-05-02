@@ -106,11 +106,6 @@ jobs:
           CURRENT_REVISION=$(helm history ${{ inputs.SERVICE }} --namespace ${{ inputs.NAMESPACE }} -o json | jq -r '.[-1].revision // 0')
 
           echo "current_revision=$CURRENT_REVISION" >> $GITHUB_OUTPUT
-          ls -la wheel-deploys
-
-          aws iam get-role --role-name staging2-on-demand-api-api | cat
-
-          aws iam list-attached-role-policies --role-name staging2-on-demand-api-api | cat
 
           # # Deploy the application using Helm
           # helm upgrade --install ${{ inputs.SERVICE }} ${{ inputs.CHART_PATH }} \
