@@ -115,6 +115,7 @@ jobs:
             --timeout ${{ inputs.TIMEOUT }}s \
             ${{ inputs.WAIT == 'true' && '--wait' || '' }} \
             --atomic \
+            --create-namespace \
             ${{ inputs.DOCKER_IMAGE_TAG != '' && format('--set image.tag={0}', inputs.DOCKER_IMAGE_TAG) || '' }}
 
           echo "Deployed ${{ inputs.DOCKER_IMAGE_TAG }} to ${{ inputs.ENVIRONMENT }}"
