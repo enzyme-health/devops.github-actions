@@ -46,7 +46,7 @@ on:
         description: "YAML formatted string of key-value pairs to pass as --set parameters to Helm (e.g. 'key1: value1\nkey2: value2')"
         default: |
           version: ${DOCKER_IMAGE_TAG}
-          image: ${REPO_NAME}:${DOCKER_IMAGE_TAG}
+          image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
     secrets:
       AWS_ACCOUNT_ACCESS_KEY_ID:
         required: true
