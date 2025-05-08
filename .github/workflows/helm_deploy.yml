@@ -40,11 +40,13 @@ on:
         type: string
         default: "300"
         description: "Timeout for the deployment in seconds"
-      WAIT:
+      SET_PARAMS:
         required: false
-        type: boolean
-        default: true
-        description: "Whether to wait for the deployment to complete"
+        type: string
+        description: "YAML formatted string of key-value pairs to pass as --set parameters to Helm (e.g. 'key1: value1\nkey2: value2')"
+        default: |
+          version: ${DOCKER_IMAGE_TAG}
+          image: ${REPO_NAME}:${DOCKER_IMAGE_TAG}
     secrets:
       AWS_ACCOUNT_ACCESS_KEY_ID:
         required: true
@@ -91,12 +93,32 @@ jobs:
         with:
           version: "v3.12.0"
 
+      - name: Install Helm diff plugin
+        run: |
+          helm plugin install https://github.com/databus23/helm-diff --version v3.11.0
+
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod a+x /usr/local/bin/yq
 
       - name: Configure kubectl context
         run: |
           aws eks update-kubeconfig --name ${{ inputs.EKS_CLUSTER_NAME }} --region us-west-2
+
+      - name: Run Helm Diff
+        run: |
+          # Convert YAML parameters to Helm --set format
+          HELM_SET_PARAMS=$(echo "${{ inputs.SET_PARAMS }}" | yq e -o=json - | jq -r 'to_entries | .[] | "--set " + .key + "=" + .value' | tr '\n' ' ')
+
+          helm diff upgrade --install ${{ inputs.HELM_RELEASE_NAME }} ${{ inputs.CHART_PATH }} \
+            --namespace ${{ inputs.NAMESPACE }} --create-namespace \
+            -f wheel-deploys/k8s-helm/${{ inputs.ENVIRONMENT }}/{{ inputs.VALUES_FILE_NAME }} \
+            $HELM_SET_PARAMS \
+            --dry-run=server
 
       - name: Deploy with Helm
         id: deploy
@@ -106,12 +128,15 @@ jobs:
 
           echo "current_revision=$CURRENT_REVISION" >> $GITHUB_OUTPUT
 
+          # Convert YAML parameters to Helm --set format
+          HELM_SET_PARAMS=$(echo "${{ inputs.SET_PARAMS }}" | yq e -o=json - | jq -r 'to_entries | .[] | "--set " + .key + "=" + .value' | tr '\n' ' ')
+
           # Deploy the application using Helm
           helm upgrade --install ${{ inputs.HELM_RELEASE_NAME }} ${{ inputs.CHART_PATH }} \
-            --values wheel-deploys/k8s-helm/${{ inputs.ENVIRONMENT }}/{{ inputs.VALUES_FILE_NAME }} \
-            --set version=${{ inputs.DOCKER_IMAGE_TAG }} \
-            --set image=${{ inputs.DOCKER_IMAGE_NAME }}:${{ inputs.DOCKER_IMAGE_TAG }} \
+            --namespace ${{ inputs.NAMESPACE }} --create-namespace \
+            -f wheel-deploys/k8s-helm/${{ inputs.ENVIRONMENT }}/{{ inputs.VALUES_FILE_NAME }} \
+            $HELM_SET_PARAMS \
             --timeout ${{ inputs.TIMEOUT }}s \
-            ${{ inputs.WAIT && '--wait' || '' }}
+            --atomic
 
           echo "Deployed ${{ inputs.DOCKER_IMAGE_TAG }} to ${{ inputs.ENVIRONMENT }}"
