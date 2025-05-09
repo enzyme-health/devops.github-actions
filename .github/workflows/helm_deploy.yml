@@ -44,7 +44,7 @@ on:
         required: false
         type: string
         description: "JSON formatted string of key-value pairs to pass as --set parameters to Helm"
-        default: '{"version":"${{ inputs.DOCKER_IMAGE_TAG }}","image":"${{ inputs.DOCKER_IMAGE_NAME }}:${{ inputs.DOCKER_IMAGE_TAG }}"}'
+        default: ''
     secrets:
       AWS_ACCOUNT_ACCESS_KEY_ID:
         required: true
@@ -105,13 +105,20 @@ jobs:
       - name: Set Helm Set Params
         run: |
           # Convert JSON parameters to Helm --set format
-          HELM_SET_PARAMS=$(echo '${{ inputs.SET_PARAMS }}' | jq -r 'to_entries | .[] | "--set " + .key + "=" + .value' | tr '\n' ' ')
+          
+          if [ -z "${{ inputs.SET_PARAMS }}" ]; then
+            SET_PARAMS='{"version":"${{ inputs.DOCKER_IMAGE_TAG }}","image":"${{ inputs.DOCKER_IMAGE_NAME }}:${{ inputs.DOCKER_IMAGE_TAG }}"}'
+          else
+            SET_PARAMS='${{ inputs.SET_PARAMS }}'
+          fi
+
+          HELM_SET_PARAMS=$(echo "$SET_PARAMS" | jq -r 'to_entries | .[] | "--set " + .key + "=" + .value' | tr '\n' ' ')
           echo "HELM_SET_PARAMS=$HELM_SET_PARAMS" >> $GITHUB_ENV
 
       - name: Run Helm Diff
         run: |
           helm diff upgrade --install ${{ inputs.HELM_RELEASE_NAME }} ${{ inputs.CHART_PATH }} \
-            --namespace ${{ inputs.NAMESPACE }} --create-namespace \
+            --namespace ${{ inputs.NAMESPACE }} \
             -f wheel-deploys/k8s-helm/${{ inputs.ENVIRONMENT }}/${{ inputs.VALUES_FILE_NAME }} \
             $HELM_SET_PARAMS \
             --dry-run=server
