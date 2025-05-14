@@ -4,11 +4,11 @@ on:
   workflow_call:
     inputs:
       DOCKER_IMAGE_NAME:
-        required: true
+        required: false
         type: string
         description: "Docker image name to deploy"
       DOCKER_IMAGE_TAG:
-        required: true
+        required: false
         type: string
         description: "Docker image tag to deploy"
       ENVIRONMENT:
@@ -45,6 +45,11 @@ on:
         type: string
         description: "JSON formatted string of key-value pairs to pass as --set parameters to Helm"
         default: ''
+      TEST_MODE:
+        required: false
+        type: boolean
+        description: "If true, the deployment will not be applied and will run in dry-run mode"
+        default: false
     secrets:
       AWS_ACCOUNT_ACCESS_KEY_ID:
         required: true
@@ -132,3 +137,4 @@ jobs:
             $HELM_SET_PARAMS \
             --timeout ${{ inputs.TIMEOUT }}s \
             --atomic
+            ${{ inputs.TEST_MODE && '--dry-run=server' || '' }}
