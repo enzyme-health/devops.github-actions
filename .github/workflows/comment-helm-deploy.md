@@ -1,0 +1,5 @@
+I have one additional suggestion here since we need to be testing these helm charts and we will likely be converting other services in the future that are not part of the current scope since they are not broken (but could break with future k8s version updates that will be required later this year).
+
+We should add a TEST_MODE boolean input (defaults to false). If that option is set to true, then we should append --dry-run=server to the end of this helm command so we can run the workflow without actually applying changes.
+
+This gives us a safety net of validating helm behavior in the future, even after current scope and removing the helm diff step when it is no longer required (I don't want us to keep the helm diff step permanently due to the risk of inadvertently exposing sensitive data to logs in GHA runs).
