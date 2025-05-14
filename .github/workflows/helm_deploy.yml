@@ -136,5 +136,5 @@ jobs:
             -f wheel-deploys/k8s-helm/${{ inputs.ENVIRONMENT }}/${{ inputs.VALUES_FILE_NAME }} \
             $HELM_SET_PARAMS \
             --timeout ${{ inputs.TIMEOUT }}s \
-            --atomic
+            --atomic \
             ${{ inputs.TEST_MODE && '--dry-run=server' || '' }}
