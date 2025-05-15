@@ -1,0 +1,53 @@
+name: Setup K8s Environment
+description: Common setup for AWS, Helm, and kubectl
+
+inputs:
+  AWS_ACCOUNT_ACCESS_KEY_ID:
+    required: true
+    description: "AWS access key ID for authentication"
+  AWS_ACCOUNT_SECRET_ACCESS_KEY:
+    required: true
+    description: "AWS secret access key for authentication"
+  PAT:
+    required: true
+    description: "GitHub Personal Access Token for private repo checkout"
+  EKS_CLUSTER_NAME:
+    required: true
+    description: "Name of the EKS cluster to configure kubectl context"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ inputs.AWS_ACCOUNT_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ inputs.AWS_ACCOUNT_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+
+    - name: Checkout repo wheel-deploys
+      uses: actions/checkout@v3
+      with:
+        repository: enzyme-health/wheel-deploys
+        token: ${{ inputs.PAT }}
+        path: wheel-deploys
+        ref: opta-migration-e2e
+
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: "v3.17.3"
+
+    - name: Install Helm diff plugin
+      run: |
+        helm plugin install https://github.com/databus23/helm-diff --version v3.11.0
+      shell: bash
+
+    - name: Install jq
+      run: sudo apt-get update && sudo apt-get install -y jq
+      shell: bash
+
+    - name: Configure kubectl context
+      run: |
+        aws eks update-kubeconfig --name ${{ inputs.EKS_CLUSTER_NAME }} --region us-west-2
+      shell: bash 
