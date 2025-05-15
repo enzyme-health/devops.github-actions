@@ -127,7 +127,7 @@ jobs:
 
           if [ -n "${{ inputs.SET_PARAMS }}" ]; then
             # Merge SET_PARAMS and PARAMS_JSON, with PARAMS_JSON last so its keys take precedence
-            PARAMS_JSON=$(echo "[${{ inputs.SET_PARAMS }},$PARAMS_JSON]" | jq 'add')
+            PARAMS_JSON=$(jq -s 'add' <(echo '${{ inputs.SET_PARAMS }}') <(echo "$PARAMS_JSON"))
           fi
 
           HELM_SET_PARAMS=$(echo "$PARAMS_JSON" | jq -r 'to_entries | .[] | "--set " + .key + "=" + (.value|tostring)' | tr '\n' ' ')
