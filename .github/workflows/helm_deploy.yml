@@ -109,15 +109,29 @@ jobs:
 
       - name: Set Helm Set Params
         run: |
-          # Convert JSON parameters to Helm --set format
-          
-          if [ -z "${{ inputs.SET_PARAMS }}" ]; then
-            SET_PARAMS='{"version":"${{ inputs.DOCKER_IMAGE_TAG }}","image":"${{ inputs.DOCKER_IMAGE_NAME }}:${{ inputs.DOCKER_IMAGE_TAG }}"}'
-          else
-            SET_PARAMS='${{ inputs.SET_PARAMS }}'
+          # Dynamically build Helm --set parameters:
+          # - If DOCKER_IMAGE_TAG is set, add version.
+          # - If both DOCKER_IMAGE_TAG and DOCKER_IMAGE_NAME are set, add image as name:tag.
+          # - If SET_PARAMS is set, merge its keys/values into the main object (not nested), with image/tag taking precedence.
+          # Only include keys if their values are present.
+
+          PARAMS_JSON="{}"
+
+          if [ -n "${{ inputs.DOCKER_IMAGE_TAG }}" ]; then
+            PARAMS_JSON=$(echo "$PARAMS_JSON" | jq --arg v "${{ inputs.DOCKER_IMAGE_TAG }}" '. + {version: $v}')
           fi
 
-          HELM_SET_PARAMS=$(echo "$SET_PARAMS" | jq -r 'to_entries | .[] | "--set " + .key + "=" + .value' | tr '\n' ' ')
+          if [ -n "${{ inputs.DOCKER_IMAGE_TAG }}" ] && [ -n "${{ inputs.DOCKER_IMAGE_NAME }}" ]; then
+            PARAMS_JSON=$(echo "$PARAMS_JSON" | jq --arg i "${{ inputs.DOCKER_IMAGE_NAME }}:${{ inputs.DOCKER_IMAGE_TAG }}" '. + {image: $i}')
+          fi
+
+          if [ -n "${{ inputs.SET_PARAMS }}" ]; then
+            # Merge SET_PARAMS and BASE_JSON, with BASE_JSON last so its keys take precedence
+            PARAMS_JSON=$(echo "[${{ inputs.SET_PARAMS }},$BASE_JSON]" | jq 'add')
+          fi
+
+          HELM_SET_PARAMS=$(echo "$PARAMS_JSON" | jq -r 'to_entries | .[] | "--set " + .key + "=" + (.value|tostring)' | tr '\n' ' ')
+          
           echo "HELM_SET_PARAMS=$HELM_SET_PARAMS" >> $GITHUB_ENV
 
       - name: Run Helm Diff
