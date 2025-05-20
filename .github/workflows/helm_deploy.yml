@@ -32,9 +32,10 @@ on:
         type: string
         description: "Path to the values file"
       HELM_RELEASE_NAMESPACE:
-        required: true
+        required: false
         type: string
         description: "Kubernetes release namespace to deploy to"
+        default: ""
       TIMEOUT:
         required: false
         type: string
@@ -137,7 +138,7 @@ jobs:
       - name: Run Helm Diff
         run: |
           helm diff upgrade --install ${{ inputs.HELM_RELEASE_NAME }} ${{ inputs.CHART_PATH }} \
-            --namespace ${{ inputs.HELM_RELEASE_NAMESPACE }} \
+            ${{ inputs.HELM_RELEASE_NAMESPACE != '' && format('--namespace {0} \\', inputs.HELM_RELEASE_NAMESPACE) || '' }}
             -f wheel-deploys/k8s-helm/${{ inputs.ENVIRONMENT }}/${{ inputs.VALUES_FILE_NAME }} \
             $HELM_SET_PARAMS \
             --dry-run=server
@@ -147,7 +148,7 @@ jobs:
         run: |
           # Deploy the application using Helm
           helm upgrade --install ${{ inputs.HELM_RELEASE_NAME }} ${{ inputs.CHART_PATH }} \
-            --namespace ${{ inputs.HELM_RELEASE_NAMESPACE }} --create-namespace \
+            ${{ inputs.HELM_RELEASE_NAMESPACE != '' && format('--namespace {0} --create-namespace \\', inputs.HELM_RELEASE_NAMESPACE) || '' }}
             -f wheel-deploys/k8s-helm/${{ inputs.ENVIRONMENT }}/${{ inputs.VALUES_FILE_NAME }} \
             $HELM_SET_PARAMS \
             --timeout ${{ inputs.TIMEOUT }}s \
