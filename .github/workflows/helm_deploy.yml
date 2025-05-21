@@ -36,6 +36,10 @@ on:
         type: string
         description: "Kubernetes release namespace to deploy to"
         default: ""
+      USE_HELM_CLI_NAMESPACE:
+        required: true
+        type: boolean
+        description: "If true, use the HELM_RELEASE_NAMESPACE as the namespace on the HELM CLI"
       TIMEOUT:
         required: false
         type: string
@@ -138,7 +142,7 @@ jobs:
       - name: Run Helm Diff
         run: |
           helm diff upgrade --install ${{ inputs.HELM_RELEASE_NAME }} ${{ inputs.CHART_PATH }} \
-            ${{ inputs.HELM_RELEASE_NAMESPACE != '' && format('--namespace {0} ', inputs.HELM_RELEASE_NAMESPACE) || '' }} \
+            ${{ inputs.USE_HELM_CLI_NAMESPACE && format('--namespace {0} ', inputs.HELM_RELEASE_NAMESPACE) || '' }} \
             -f wheel-deploys/k8s-helm/${{ inputs.ENVIRONMENT }}/${{ inputs.VALUES_FILE_NAME }} \
             $HELM_SET_PARAMS \
             --dry-run=server
@@ -148,7 +152,7 @@ jobs:
         run: |
           # Deploy the application using Helm
           helm upgrade --install ${{ inputs.HELM_RELEASE_NAME }} ${{ inputs.CHART_PATH }} \
-            ${{ inputs.HELM_RELEASE_NAMESPACE != '' && format('--namespace {0} --create-namespace ', inputs.HELM_RELEASE_NAMESPACE) || '' }} \
+            ${{ inputs.USE_HELM_CLI_NAMESPACE && format('--namespace {0} --create-namespace ', inputs.HELM_RELEASE_NAMESPACE) || '' }} \
             -f wheel-deploys/k8s-helm/${{ inputs.ENVIRONMENT }}/${{ inputs.VALUES_FILE_NAME }} \
             $HELM_SET_PARAMS \
             --timeout ${{ inputs.TIMEOUT }}s \
