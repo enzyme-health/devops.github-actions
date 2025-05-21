@@ -89,7 +89,7 @@ jobs:
           repository: enzyme-health/wheel-deploys
           token: ${{ secrets.PAT }}
           path: wheel-deploys
-          ref: opta-migration-e2e
+          ref: main
 
       # - name: Install kubectl
       #   uses: azure/setup-kubectl@v3
