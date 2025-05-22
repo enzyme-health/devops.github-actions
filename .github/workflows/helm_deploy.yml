@@ -1,0 +1,155 @@
+name: Reusable Helm Deployment Workflow
+
+on:
+  workflow_call:
+    inputs:
+      DOCKER_IMAGE_NAME:
+        required: false
+        type: string
+        description: "Docker image name to deploy"
+      DOCKER_IMAGE_TAG:
+        required: false
+        type: string
+        description: "Docker image tag to deploy"
+      ENVIRONMENT:
+        required: true
+        type: string
+        description: "Target environment (production, staging, sandbox)"
+      EKS_CLUSTER_NAME:
+        required: true
+        type: string
+        description: "Name of the EKS cluster to deploy to"
+      HELM_RELEASE_NAME:
+        required: true
+        type: string
+        description: "Name of the Helm release to deploy"
+      CHART_PATH:
+        required: true
+        type: string
+        description: "Path to the Helm chart"
+      VALUES_FILE_NAME:
+        required: true
+        type: string
+        description: "Path to the values file"
+      HELM_RELEASE_NAMESPACE:
+        required: false
+        type: string
+        description: "Kubernetes release namespace to deploy to"
+        default: ""
+      USE_HELM_CLI_NAMESPACE:
+        required: true
+        type: boolean
+        description: "If true, use the HELM_RELEASE_NAMESPACE as the namespace on the HELM CLI"
+      TIMEOUT:
+        required: false
+        type: string
+        default: "300"
+        description: "Timeout for the deployment in seconds"
+      SET_PARAMS:
+        required: false
+        type: string
+        description: "JSON formatted string of key-value pairs to pass as --set parameters to Helm"
+        default: ''
+      TEST_MODE:
+        required: false
+        type: boolean
+        description: "If true, the deployment will not be applied and will run in dry-run mode"
+        default: false
+    secrets:
+      AWS_ACCOUNT_ACCESS_KEY_ID:
+        required: true
+      AWS_ACCOUNT_SECRET_ACCESS_KEY:
+        required: true
+      PAT:
+        required: true
+
+concurrency:
+  group: "${{ inputs.ENVIRONMENT }}-${{ inputs.HELM_RELEASE_NAME }}-deploy"
+  cancel-in-progress: true
+
+env:
+  GITHUB_SHA: ${{ github.sha }}
+
+jobs:
+  helm-deploy:
+    name: "Helm ${{ inputs.ENVIRONMENT }} Deploy"
+    environment: ${{ inputs.ENVIRONMENT }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCOUNT_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_ACCOUNT_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Checkout repo wheel-deploys
+        uses: actions/checkout@v3
+        with:
+          repository: enzyme-health/wheel-deploys
+          token: ${{ secrets.PAT }}
+          path: wheel-deploys
+          ref: main
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: "v3.17.3"
+
+      - name: Install Helm diff plugin
+        run: |
+          helm plugin install https://github.com/databus23/helm-diff --version v3.11.0
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Configure kubectl context
+        run: |
+          aws eks update-kubeconfig --name ${{ inputs.EKS_CLUSTER_NAME }} --region us-west-2
+
+      - name: Set Helm Set Params
+        run: |
+          # Dynamically build Helm --set parameters:
+          # - If DOCKER_IMAGE_TAG is set, add version.
+          # - If both DOCKER_IMAGE_TAG and DOCKER_IMAGE_NAME are set, add image as name:tag.
+          # - If SET_PARAMS is set, merge its keys/values into the main object (not nested), with image/tag taking precedence.
+          # Only include keys if their values are present.
+
+          PARAMS_JSON="{}"
+
+          if [ -n "${{ inputs.DOCKER_IMAGE_TAG }}" ]; then
+            PARAMS_JSON=$(echo "$PARAMS_JSON" | jq --arg v "${{ inputs.DOCKER_IMAGE_TAG }}" '. + {version: $v}')
+          fi
+
+          if [ -n "${{ inputs.DOCKER_IMAGE_TAG }}" ] && [ -n "${{ inputs.DOCKER_IMAGE_NAME }}" ]; then
+            PARAMS_JSON=$(echo "$PARAMS_JSON" | jq --arg i "${{ inputs.DOCKER_IMAGE_NAME }}:${{ inputs.DOCKER_IMAGE_TAG }}" '. + {image: $i}')
+          fi
+
+          if [ -n "${{ inputs.SET_PARAMS }}" ]; then
+            # Merge SET_PARAMS and PARAMS_JSON, with PARAMS_JSON last so its keys take precedence
+            PARAMS_JSON=$(jq -s 'add' <(echo '${{ inputs.SET_PARAMS }}') <(echo "$PARAMS_JSON"))
+          fi
+
+          HELM_SET_PARAMS=$(echo "$PARAMS_JSON" | jq -r 'to_entries | .[] | "--set " + .key + "=" + (.value|tostring)' | tr '\n' ' ')
+          
+          echo "HELM_SET_PARAMS=$HELM_SET_PARAMS" >> $GITHUB_ENV
+
+      - name: Run Helm Diff
+        run: |
+          helm diff upgrade --install ${{ inputs.HELM_RELEASE_NAME }} ${{ inputs.CHART_PATH }} \
+            ${{ inputs.USE_HELM_CLI_NAMESPACE && format('--namespace {0} ', inputs.HELM_RELEASE_NAMESPACE) || '' }} \
+            -f wheel-deploys/k8s-helm/${{ inputs.ENVIRONMENT }}/${{ inputs.VALUES_FILE_NAME }} \
+            $HELM_SET_PARAMS \
+            --dry-run=server
+
+      - name: Deploy with Helm
+        id: deploy
+        run: |
+          # Deploy the application using Helm
+          helm upgrade --install ${{ inputs.HELM_RELEASE_NAME }} ${{ inputs.CHART_PATH }} \
+            ${{ inputs.USE_HELM_CLI_NAMESPACE && format('--namespace {0} --create-namespace ', inputs.HELM_RELEASE_NAMESPACE) || '' }} \
+            -f wheel-deploys/k8s-helm/${{ inputs.ENVIRONMENT }}/${{ inputs.VALUES_FILE_NAME }} \
+            $HELM_SET_PARAMS \
+            --timeout ${{ inputs.TIMEOUT }}s \
+            --atomic \
+            ${{ inputs.TEST_MODE && '--dry-run=server' || '' }}
