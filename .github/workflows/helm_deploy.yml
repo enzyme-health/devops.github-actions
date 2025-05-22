@@ -91,11 +91,6 @@ jobs:
           path: wheel-deploys
           ref: main
 
-      # - name: Install kubectl
-      #   uses: azure/setup-kubectl@v3
-      #   with:
-      #     version: "v1.28.2"
-
       - name: Install Helm
         uses: azure/setup-helm@v3
         with:
