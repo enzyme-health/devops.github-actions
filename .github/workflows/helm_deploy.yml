@@ -55,6 +55,10 @@ on:
         type: boolean
         description: "If true, the deployment will not be applied and will run in dry-run mode"
         default: false
+      SUPPRESS_HELM_OUTPUT:
+        description: 'If true, will not log the helm command output'
+        required: false
+        default: 'false'
     secrets:
       AWS_ACCOUNT_ACCESS_KEY_ID:
         required: true
@@ -131,7 +135,7 @@ jobs:
           fi
 
           HELM_SET_PARAMS=$(echo "$PARAMS_JSON" | jq -r 'to_entries | .[] | "--set " + .key + "=" + (.value|tostring)' | tr '\n' ' ')
-          
+
           echo "HELM_SET_PARAMS=$HELM_SET_PARAMS" >> $GITHUB_ENV
 
       - name: Run Helm Diff
@@ -152,4 +156,9 @@ jobs:
             $HELM_SET_PARAMS \
             --timeout ${{ inputs.TIMEOUT }}s \
             --atomic \
-            ${{ inputs.TEST_MODE && '--dry-run=server' || '' }}
+            ${{ inputs.TEST_MODE && '--dry-run=server' || '' }} \
+            ${{ inputs.SUPPRESS_HELM_OUTPUT && '> /dev/null' || '' }}
+
+          if [[ "${{ inputs.TEST_MODE }}" == "true" ]]; then
+            echo "Helm dry-run completed successfully"
+          fi
