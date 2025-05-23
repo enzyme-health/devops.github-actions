@@ -59,7 +59,7 @@ on:
         required: false
         type: boolean
         description: 'If true, will not log the helm command output'
-        default: 'false'
+        default: false
     secrets:
       AWS_ACCOUNT_ACCESS_KEY_ID:
         required: true
