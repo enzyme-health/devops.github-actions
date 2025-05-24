@@ -60,6 +60,11 @@ on:
         type: boolean
         description: 'If true, will not log the helm command output'
         default: false
+      RELEASE_VERSION:
+        required: false
+        type: string
+        description: "Name of the release version to deploy"
+        default: ""
     secrets:
       AWS_ACCOUNT_ACCESS_KEY_ID:
         required: true
@@ -77,7 +82,7 @@ env:
 
 jobs:
   helm-deploy:
-    name: "Helm ${{ inputs.ENVIRONMENT }} Deploy"
+    name: "Helm ${{ inputs.ENVIRONMENT }} Deploy${{ inputs.RELEASE_VERSION && format(' ({0})', inputs.RELEASE_VERSION) || '' }}"
     environment: ${{ inputs.ENVIRONMENT }}
     runs-on: ubuntu-24.04
     steps:
