@@ -188,7 +188,27 @@ jobs:
         if: ${{ inputs.WAIT_FOR_JOB_COMPLETION && !inputs.TEST_MODE }}
         run: |
           echo "Waiting for job '${{ inputs.JOB_NAME }}' to complete..."
-          kubectl wait --for=condition=complete job/${{ inputs.JOB_NAME }} \
-            --timeout=${{ inputs.JOB_WAIT_TIMEOUT }}s \
-            ${{ inputs.USE_HELM_CLI_NAMESPACE && format('--namespace {0}', inputs.HELM_RELEASE_NAMESPACE) || '' }}
-          echo "Job '${{ inputs.JOB_NAME }}' completed successfully"
+
+          # Set timeout and namespace variables
+          JOB_RESOURCE_NAME=job/${{ inputs.JOB_NAME }}
+          TIMEOUT_SECONDS=${{ inputs.JOB_WAIT_TIMEOUT }}
+          NAMESPACE_FLAG="${{ inputs.USE_HELM_CLI_NAMESPACE && format('--namespace {0}', inputs.HELM_RELEASE_NAMESPACE) || '' }}"
+
+          # Wait for job completion with timeout handling
+          if kubectl wait --for=condition=complete ${JOB_RESOURCE_NAME} \
+            --timeout=${TIMEOUT_SECONDS}s \
+            ${NAMESPACE_FLAG}; then
+            echo "Job '${{ inputs.JOB_NAME }}' completed successfully"
+          else
+            echo "Job '${{ inputs.JOB_NAME }}' did not complete within ${TIMEOUT_SECONDS} seconds"
+            echo "Checking job status..."
+
+            # Get job status
+            kubectl describe ${JOB_RESOURCE_NAME} ${NAMESPACE_FLAG} || true
+
+            echo "Cleaning up timed-out job '${{ inputs.JOB_NAME }}'..."
+            kubectl delete ${JOB_RESOURCE_NAME} ${NAMESPACE_FLAG} --ignore-not-found=true
+
+            echo "Job cleanup completed"
+            exit 1
+          fi
