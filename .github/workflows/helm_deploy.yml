@@ -65,6 +65,21 @@ on:
         type: string
         description: "Name of the release version to deploy"
         default: ""
+      WAIT_FOR_JOB_COMPLETION:
+        required: false
+        type: boolean
+        description: "If true, will wait for a Kubernetes job to complete after deployment"
+        default: false
+      JOB_NAME:
+        required: false
+        type: string
+        description: "Name of the Kubernetes job to wait for completion (required if WAIT_FOR_JOB_COMPLETION is true)"
+        default: ""
+      JOB_WAIT_TIMEOUT:
+        required: false
+        type: string
+        description: "Timeout in seconds for waiting for job completion"
+        default: "1800"
     secrets:
       AWS_ACCOUNT_ACCESS_KEY_ID:
         required: true
@@ -168,3 +183,12 @@ jobs:
           if [[ "${{ inputs.TEST_MODE }}" == "true" ]]; then
             echo "Helm dry-run completed successfully"
           fi
+
+      - name: Wait for job completion
+        if: ${{ inputs.WAIT_FOR_JOB_COMPLETION && !inputs.TEST_MODE }}
+        run: |
+          echo "Waiting for job '${{ inputs.JOB_NAME }}' to complete..."
+          kubectl wait --for=condition=complete job/${{ inputs.JOB_NAME }} \
+            --timeout=${{ inputs.JOB_WAIT_TIMEOUT }}s \
+            ${{ inputs.USE_HELM_CLI_NAMESPACE && format('--namespace {0}', inputs.HELM_RELEASE_NAMESPACE) || '' }}
+          echo "Job '${{ inputs.JOB_NAME }}' completed successfully"
