@@ -166,5 +166,5 @@ jobs:
             ${{ inputs.SUPPRESS_HELM_OUTPUT && '> /dev/null' || '' }}
 
           if [[ "${{ inputs.TEST_MODE }}" == "true" ]]; then
-            echo "Helm dry-run completed successfully"
+            echo "Helm dry-run completed"
           fi
