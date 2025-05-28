@@ -202,9 +202,9 @@ jobs:
           else
             echo "Job '${{ inputs.JOB_NAME }}' did not complete within ${TIMEOUT_SECONDS} seconds"
 
-            echo "Cleaning up timed-out job '${{ inputs.JOB_NAME }}'..."
-            kubectl delete ${JOB_RESOURCE_NAME} ${NAMESPACE_FLAG} --ignore-not-found=true
+            # echo "Cleaning up timed-out job '${{ inputs.JOB_NAME }}'..."
+            # kubectl delete ${JOB_RESOURCE_NAME} ${NAMESPACE_FLAG} --ignore-not-found=true
 
-            echo "Job cleanup completed"
+            # echo "Job cleanup completed"
             exit 1
           fi
