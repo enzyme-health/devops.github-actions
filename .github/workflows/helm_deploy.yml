@@ -65,6 +65,21 @@ on:
         type: string
         description: "Name of the release version to deploy"
         default: ""
+      WAIT_FOR_JOB_COMPLETION:
+        required: false
+        type: boolean
+        description: "If true, will wait for a Kubernetes job to complete after deployment"
+        default: false
+      JOB_NAME:
+        required: false
+        type: string
+        description: "Name of the Kubernetes job to wait for completion (required if WAIT_FOR_JOB_COMPLETION is true)"
+        default: ""
+      JOB_WAIT_TIMEOUT:
+        required: false
+        type: string
+        description: "Timeout in seconds for waiting for job completion"
+        default: "1800"
     secrets:
       AWS_ACCOUNT_ACCESS_KEY_ID:
         required: true
@@ -167,4 +182,29 @@ jobs:
 
           if [[ "${{ inputs.TEST_MODE }}" == "true" ]]; then
             echo "Helm dry-run completed"
+          fi
+
+      - name: Wait for job completion
+        if: ${{ inputs.WAIT_FOR_JOB_COMPLETION && !inputs.TEST_MODE }}
+        run: |
+          echo "Waiting for job '${{ inputs.JOB_NAME }}' to complete..."
+
+          # Set timeout and namespace variables
+          JOB_RESOURCE_NAME=job/${{ inputs.JOB_NAME }}
+          TIMEOUT_SECONDS=${{ inputs.JOB_WAIT_TIMEOUT }}
+          NAMESPACE_FLAG="${{ inputs.USE_HELM_CLI_NAMESPACE && format('--namespace {0}', inputs.HELM_RELEASE_NAMESPACE) || '' }}"
+
+          # Wait for job completion with timeout handling
+          if kubectl wait --for=condition=complete ${JOB_RESOURCE_NAME} \
+            --timeout=${TIMEOUT_SECONDS}s \
+            ${NAMESPACE_FLAG}; then
+            echo "Job '${{ inputs.JOB_NAME }}' completed successfully"
+          else
+            echo "Job '${{ inputs.JOB_NAME }}' did not complete within ${TIMEOUT_SECONDS} seconds"
+
+            # echo "Cleaning up timed-out job '${{ inputs.JOB_NAME }}'..."
+            # kubectl delete ${JOB_RESOURCE_NAME} ${NAMESPACE_FLAG} --ignore-not-found=true
+
+            # echo "Job cleanup completed"
+            exit 1
           fi
