@@ -114,7 +114,7 @@ jobs:
           repository: enzyme-health/wheel-deploys
           token: ${{ secrets.PAT }}
           path: wheel-deploys
-          ref: migration/opta-deploy
+          ref: main
 
       - name: Install Helm
         uses: azure/setup-helm@v3
