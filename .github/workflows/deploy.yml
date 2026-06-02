@@ -57,7 +57,7 @@ jobs:
           path: wheel-deploys
 
       - name: Pin terraform version
-        uses: hashicorp/setup-terraform@v1
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.0.0
           terraform_wrapper: false
