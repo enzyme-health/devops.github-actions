@@ -1,0 +1,69 @@
+name: Reusable Deploy Migrations Workflow
+
+on:
+  workflow_call:
+    inputs:
+      DOCKER_IMAGE_TAG:
+        required: true
+        type: string
+      ENVIRONMENT:
+        required: true
+        type: string
+      K8S_FILE_TEMPLATE:
+        required: true
+        type: string
+    secrets:
+      AWS_ACCOUNT_ACCESS_KEY_ID:
+        required: true
+      AWS_ACCOUNT_SECRET_ACCESS_KEY:
+        required: true
+      PAT:
+        required: true
+
+jobs:
+  deploy_migrations:
+    name: "${{ inputs.ENVIRONMENT }} Migrations Deploy"
+    environment: ${{ inputs.ENVIRONMENT }}
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Configure AWS credentials for Migrations Deploy
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCOUNT_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_ACCOUNT_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Checkout repo wheel-deploys
+        uses: actions/checkout@v2
+        with:
+          repository: enzyme-health/wheel-deploys
+          token: ${{ secrets.PAT }}
+          path: wheel-deploys
+
+      - name: Pin terraform version
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0
+          terraform_wrapper: false
+
+      - uses: azure/setup-kubectl@v2.0
+        with:
+          version: 'v1.23.6'
+        id: install
+
+      - name: Setup AWS EKS Credentials
+        run: |
+          aws --version
+          aws eks --region us-west-2 update-kubeconfig --name opta-${ENVIRONMENT}2
+        env:
+          ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+
+      - name: Update deployment via Opta
+        run: |
+          kubectl version --client --short
+          pushd k8s/migrations
+          cat $K8S_FILE_TEMPLATE | sed "s/latest/${DOCKER_IMAGE_TAG}/g" | kubectl apply -f -
+        env:
+          K8S_FILE_TEMPLATE: ${{ env.K8S_FILE_TEMPLATE }}
+          DOCKER_IMAGE_TAG: ${{ inputs.DOCKER_IMAGE_TAG }}
+          ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
